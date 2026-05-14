@@ -9,3 +9,5 @@ dist-ssr
 .env.*
 !.env.example
 tsconfig.tsbuildinfo
+kuber-finance.zip
+
