@@ -31,6 +31,8 @@ export interface FinanceState {
   currency: string;
   dailySavingGoal: number;
   monthlyIncome: number;
+  openingBalance: number;
+  ownerEmail: string;
   transactions: Transaction[];
   limits: SpendingLimit[];
 }

@@ -7,61 +7,85 @@ interface Props {
   onReset: () => void;
 }
 
-const CURRENCIES = ["USD", "EUR", "GBP", "INR", "JPY", "CAD", "AUD"];
+const CURRENCIES = ["INR", "USD", "EUR", "GBP", "AED", "SGD"];
 
 export default function Settings({ state, onUpdate, onReset }: Props) {
   return (
-    <div className="max-w-2xl space-y-5">
+    <div className="max-w-2xl space-y-4">
       <div className="card p-6">
-        <div className="font-semibold mb-1">Preferences</div>
-        <div className="text-xs text-slate-400 mb-5">Personalize your CFO experience.</div>
+        <div className="text-[14px] font-medium">Preferences</div>
+        <div className="text-[11.5px] text-sub mb-5">Personalize your dashboard.</div>
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <div className="label mb-1.5">Currency</div>
+          <Field label="Email">
+            <input
+              value={state.ownerEmail}
+              onChange={(e) => onUpdate({ ownerEmail: e.target.value })}
+              className="input"
+            />
+          </Field>
+          <Field label="Currency">
             <select
               value={state.currency}
               onChange={(e) => onUpdate({ currency: e.target.value })}
               className="input"
             >
               {CURRENCIES.map((c) => (
-                <option key={c} value={c} className="bg-ink-900">
+                <option key={c} value={c}>
                   {c}
                 </option>
               ))}
             </select>
-          </div>
-          <div>
-            <div className="label mb-1.5">Monthly income baseline</div>
+          </Field>
+          <Field label="Monthly income baseline">
             <input
               type="number"
               min="0"
               value={state.monthlyIncome}
               onChange={(e) => onUpdate({ monthlyIncome: Number(e.target.value) || 0 })}
-              className="input"
+              className="input num"
             />
-          </div>
-          <div>
-            <div className="label mb-1.5">Daily savings goal</div>
+          </Field>
+          <Field label="Opening balance">
+            <input
+              type="number"
+              value={state.openingBalance}
+              onChange={(e) => onUpdate({ openingBalance: Number(e.target.value) || 0 })}
+              className="input num"
+            />
+          </Field>
+          <Field label="Daily savings goal">
             <input
               type="number"
               min="0"
               value={state.dailySavingGoal}
               onChange={(e) => onUpdate({ dailySavingGoal: Number(e.target.value) || 0 })}
-              className="input"
+              className="input num"
             />
-          </div>
+          </Field>
         </div>
       </div>
 
       <div className="card p-6">
-        <div className="font-semibold mb-1">Data</div>
-        <div className="text-xs text-slate-400 mb-5">
-          All data is stored locally in your browser. Use the Excel sync page to back it up.
+        <div className="text-[14px] font-medium">Data</div>
+        <div className="text-[11.5px] text-sub mb-5">
+          All data lives in your browser. Export from the Integrations tab to back up.
         </div>
-        <button onClick={onReset} className="btn-ghost text-pink-300 border-pink-500/20 hover:bg-pink-500/5">
-          <RefreshCcw size={15} /> Reset to sample data
+        <button
+          onClick={onReset}
+          className="btn-ghost text-danger border-danger/30 hover:border-danger/50"
+        >
+          <RefreshCcw size={13} /> Reset to sample data
         </button>
       </div>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="label mb-1.5">{label}</div>
+      {children}
     </div>
   );
 }

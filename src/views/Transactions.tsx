@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import TransactionTable from "../components/TransactionTable";
-import type { Category, FinanceState, Transaction, TxnType } from "../lib/types";
+import type { Category, FinanceState, TxnType } from "../lib/types";
 
 interface Props {
   state: FinanceState;
@@ -29,22 +29,20 @@ export default function Transactions({ state, onDelete }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="card p-4 flex flex-wrap gap-2 items-center">
+      <div className="flex flex-wrap items-center gap-2">
         <input
-          placeholder="Search description..."
+          placeholder="Search description…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           className="input max-w-xs"
         />
-        <div className="flex gap-1.5">
+        <div className="flex gap-1 p-1 bg-elev rounded-lg border border-line">
           {TYPES.map((t) => (
             <button
               key={t}
               onClick={() => setType(t)}
-              className={`px-3 py-1.5 rounded-lg text-xs capitalize border ${
-                type === t
-                  ? "bg-white/[0.06] border-accent-500/40 text-accent-400"
-                  : "border-white/5 text-slate-300 hover:bg-white/[0.04]"
+              className={`px-3 py-1 rounded-md text-[12px] capitalize transition-colors ${
+                type === t ? "bg-bg text-text" : "text-sub hover:text-text"
               }`}
             >
               {t}
@@ -56,18 +54,23 @@ export default function Transactions({ state, onDelete }: Props) {
           onChange={(e) => setCat(e.target.value as Category | "all")}
           className="input max-w-[180px]"
         >
-          <option value="all" className="bg-ink-900">All categories</option>
+          <option value="all">All categories</option>
           {cats.map((c) => (
-            <option key={c} value={c} className="bg-ink-900">
+            <option key={c} value={c}>
               {c}
             </option>
           ))}
         </select>
-        <div className="ml-auto text-xs text-slate-400">
-          {rows.length} of {state.transactions.length} shown
+        <div className="ml-auto text-[11px] text-sub">
+          {rows.length} of {state.transactions.length}
         </div>
       </div>
-      <TransactionTable transactions={rows} currency={state.currency} onDelete={onDelete} />
+      <TransactionTable
+        transactions={rows}
+        currency={state.currency}
+        onDelete={onDelete}
+        title="Transactions"
+      />
     </div>
   );
 }

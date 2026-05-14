@@ -7,65 +7,67 @@ interface Props {
   currency: string;
   onDelete?: (id: string) => void;
   limit?: number;
-  compact?: boolean;
+  title?: string;
 }
 
-const typeStyle: Record<Transaction["type"], string> = {
-  income: "bg-accent-500/10 text-accent-400",
-  expense: "bg-pink-500/10 text-pink-300",
-  saving: "bg-cyan-500/10 text-cyan-300",
+const typeColor: Record<Transaction["type"], string> = {
+  income: "text-accent-glow",
+  expense: "text-text",
+  saving: "text-info",
 };
 
-export default function TransactionTable({ transactions, currency, onDelete, limit, compact }: Props) {
+const typeDot: Record<Transaction["type"], string> = {
+  income: "bg-accent",
+  expense: "bg-muted",
+  saving: "bg-info",
+};
+
+export default function TransactionTable({ transactions, currency, onDelete, limit, title }: Props) {
   const rows = [...transactions]
     .sort((a, b) => (a.date < b.date ? 1 : -1))
     .slice(0, limit ?? transactions.length);
 
   return (
     <div className="card overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
-        <div>
-          <div className="label">{compact ? "Recent activity" : "All transactions"}</div>
-          <div className="font-semibold">{rows.length} entries</div>
-        </div>
+      <div className="px-5 py-3.5 border-b border-line flex items-center justify-between">
+        <div className="label">{title || "Activity"}</div>
+        <div className="text-[11px] text-sub">{rows.length} entries</div>
       </div>
       <div className="overflow-auto max-h-[520px]">
-        <table className="w-full text-sm">
-          <thead className="text-[11px] uppercase tracking-wider text-slate-400 bg-white/[0.02]">
+        <table className="w-full text-[13px]">
+          <thead className="text-[10.5px] uppercase tracking-widest2 text-sub">
             <tr>
-              <th className="text-left font-medium px-5 py-3">Date</th>
-              <th className="text-left font-medium px-5 py-3">Description</th>
-              <th className="text-left font-medium px-5 py-3">Category</th>
-              <th className="text-left font-medium px-5 py-3">Type</th>
-              <th className="text-right font-medium px-5 py-3">Amount</th>
+              <th className="text-left font-medium px-5 py-2.5">Date</th>
+              <th className="text-left font-medium px-5 py-2.5">Description</th>
+              <th className="text-left font-medium px-5 py-2.5">Category</th>
+              <th className="text-right font-medium px-5 py-2.5">Amount</th>
               {onDelete && <th className="px-3" />}
             </tr>
           </thead>
           <tbody>
             {rows.map((t) => (
-              <tr key={t.id} className="border-t border-white/5 hover:bg-white/[0.02]">
-                <td className="px-5 py-3 text-slate-400 whitespace-nowrap">
-                  {new Date(t.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              <tr key={t.id} className="border-t border-line hover:bg-elev/60 transition-colors">
+                <td className="px-5 py-3 text-sub whitespace-nowrap num">
+                  {new Date(t.date).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
                 </td>
-                <td className="px-5 py-3 font-medium">{t.description}</td>
-                <td className="px-5 py-3 text-slate-300">{t.category}</td>
-                <td className="px-5 py-3">
-                  <span className={`pill ${typeStyle[t.type]} capitalize`}>{t.type}</span>
+                <td className="px-5 py-3 text-text">
+                  <div className="flex items-center gap-2.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${typeDot[t.type]}`} />
+                    {t.description}
+                  </div>
                 </td>
-                <td
-                  className={`px-5 py-3 text-right font-semibold ${
-                    t.type === "income" ? "text-accent-400" : t.type === "saving" ? "text-cyan-300" : "text-slate-100"
-                  }`}
-                >
-                  {t.type === "expense" ? "−" : t.type === "income" ? "+" : ""}{fmtMoney(t.amount, currency)}
+                <td className="px-5 py-3 text-dim">{t.category}</td>
+                <td className={`px-5 py-3 text-right font-medium num ${typeColor[t.type]}`}>
+                  {t.type === "expense" ? "−" : t.type === "income" ? "+" : ""}
+                  {fmtMoney(t.amount, currency)}
                 </td>
                 {onDelete && (
                   <td className="px-3">
                     <button
                       onClick={() => onDelete(t.id)}
-                      className="p-1.5 rounded-lg text-slate-500 hover:text-pink-300 hover:bg-pink-500/10"
+                      className="p-1.5 rounded-md text-sub hover:text-danger hover:bg-danger/10"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={13} />
                     </button>
                   </td>
                 )}
@@ -73,8 +75,8 @@ export default function TransactionTable({ transactions, currency, onDelete, lim
             ))}
             {!rows.length && (
               <tr>
-                <td colSpan={6} className="text-center text-slate-500 py-10">
-                  No transactions yet. Add one or import from Excel.
+                <td colSpan={5} className="text-center text-sub py-10">
+                  No transactions yet.
                 </td>
               </tr>
             )}

@@ -49,24 +49,22 @@ export default function AddTransactionModal({ open, onClose, onAdd }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 backdrop-blur-sm p-4">
-      <form onSubmit={submit} className="card glow-border w-full max-w-md p-6">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 backdrop-blur-sm p-4">
+      <form onSubmit={submit} className="card w-full max-w-md p-6">
         <div className="flex items-center justify-between">
-          <div className="font-semibold text-lg">New transaction</div>
-          <button type="button" onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5">
-            <X size={16} />
+          <div className="font-medium text-[15px]">New transaction</div>
+          <button type="button" onClick={onClose} className="btn-icon w-7 h-7">
+            <X size={14} />
           </button>
         </div>
-        <div className="grid grid-cols-3 gap-2 mt-5">
+        <div className="grid grid-cols-3 gap-1.5 mt-5 p-1 bg-elev rounded-lg border border-line">
           {(["expense", "saving", "income"] as TxnType[]).map((t) => (
             <button
               type="button"
               key={t}
               onClick={() => setType(t)}
-              className={`py-2 rounded-xl text-sm font-medium capitalize border ${
-                type === t
-                  ? "bg-white/[0.06] border-accent-500/40 text-accent-400"
-                  : "bg-transparent border-white/5 text-slate-300 hover:bg-white/[0.04]"
+              className={`py-1.5 rounded-md text-[12.5px] font-medium capitalize transition-colors ${
+                type === t ? "bg-bg text-text" : "text-sub hover:text-text"
               }`}
             >
               {t}
@@ -86,15 +84,21 @@ export default function AddTransactionModal({ open, onClose, onAdd }: Props) {
               min="0"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00"
-              className="input"
+              placeholder="0"
+              className="input num"
               required
             />
           </div>
         </div>
         <div className="mt-3">
           <div className="label mb-1.5">Description</div>
-          <input value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="e.g. Coffee shop" className="input" required />
+          <input
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+            placeholder="e.g. Blue Tokai coffee"
+            className="input"
+            required
+          />
         </div>
         {type === "expense" && (
           <div className="mt-3">
@@ -105,7 +109,7 @@ export default function AddTransactionModal({ open, onClose, onAdd }: Props) {
               className="input"
             >
               {CATS.filter((c) => c !== "Income" && c !== "Savings").map((c) => (
-                <option key={c} value={c} className="bg-ink-900">
+                <option key={c} value={c} className="bg-bg">
                   {c}
                 </option>
               ))}
