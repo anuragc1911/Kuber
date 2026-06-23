@@ -2,16 +2,9 @@
 
 import Link from 'next/link'
 import { BottomNav } from '@/components/app/bottom-nav'
-import { UserMenu } from '@/components/app/user-menu'
 import { KuberMark } from '@/components/ui/kuber-logo'
 
-export function AppShell({
-  children,
-  userEmail,
-}: {
-  children: React.ReactNode
-  userEmail: string | null
-}) {
+export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative min-h-screen bg-black flex flex-col">
       <header className="sticky top-0 z-40 h-14 shrink-0 border-b border-white/10 bg-black/85 backdrop-blur-xl flex items-center justify-between px-4 pt-[env(safe-area-inset-top)]">
@@ -19,14 +12,12 @@ export function AppShell({
           <KuberMark size="md" />
           <span className="text-sm text-white/80 kuber-serif">Kuber</span>
         </Link>
-        <div className="flex items-center gap-2">
-          {userEmail && (
-            <span className="hidden xs:inline text-[11px] text-white/40 truncate max-w-[140px]">
-              {userEmail}
-            </span>
-          )}
-          <UserMenu email={userEmail} businessName="" />
-        </div>
+        <Link
+          href="/"
+          className="text-[12px] text-white/40 hover:text-white transition"
+        >
+          exit
+        </Link>
       </header>
 
       <main className="flex-1 pb-[calc(96px+env(safe-area-inset-bottom))]">
