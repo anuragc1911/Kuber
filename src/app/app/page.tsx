@@ -142,7 +142,7 @@ export default function AppHome() {
               />
               <Tooltip
                 cursor={{ stroke: 'rgba(176,196,222,0.25)', strokeWidth: 1 }}
-                formatter={(v: number) => [compactINR(v), 'Wealth']}
+                formatter={(v: unknown) => [compactINR(Number(v)), 'Wealth'] as [string, string]}
                 labelFormatter={(l) => `Age ${l}`}
                 contentStyle={{
                   background: 'rgba(8,12,24,0.92)',

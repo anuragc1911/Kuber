@@ -171,7 +171,7 @@ export function MagicMomentSection() {
                   )}
                   <Tooltip
                     cursor={{ stroke: 'rgba(176,196,222,0.25)', strokeWidth: 1 }}
-                    formatter={(v: number, key) => [compactINR(v), key === 'boosted' ? 'With +₹5k/mo' : 'Current rate']}
+                    formatter={(v: unknown, key: unknown) => [compactINR(Number(v)), key === 'boosted' ? 'With +₹5k/mo' : 'Current rate'] as [string, string]}
                     labelFormatter={(l) => `Age ${l}`}
                     contentStyle={{
                       background: 'rgba(8,12,24,0.92)',
