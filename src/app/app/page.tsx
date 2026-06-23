@@ -1,195 +1,158 @@
-import { MetricCard } from '@/components/app/metric-card'
-import { CashChart } from '@/components/app/cash-chart'
-import { AskButton } from '@/components/app/ask-button'
-import {
-  summary,
-  inr,
-  dailyCashSeries,
-  skuProfitability,
-  customerCohorts,
-} from '@/lib/metrics'
-import { alerts } from '@/lib/activity'
+'use client'
+
+import Link from 'next/link'
+import { useMemo } from 'react'
+import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts'
+import { ArrowRight, MessageSquare, Sparkles } from 'lucide-react'
+import { useWealthProfile } from '@/lib/wealth-store'
+import { compactINR, projectWealth, yearsToTarget } from '@/lib/projection'
 import { cn } from '@/lib/utils'
 
-export default function DashboardPage() {
-  const s = summary()
-  const cash = dailyCashSeries(60)
-  const skuRows = skuProfitability()
-  const cohorts = customerCohorts().slice(-4)
-  const allAlerts = alerts()
-  const critical = allAlerts.filter((a) => a.severity === 'critical')
-  const warn = allAlerts.filter((a) => a.severity === 'warn')
+const TARGET_AGE = 60
 
-  const revGrowth = s.revenuePrev30d ? ((s.revenue30d - s.revenuePrev30d) / s.revenuePrev30d) * 100 : 0
-  const leakImpact = s.leaks.reduce((n, l) => n + l.impact, 0)
+export default function AppHome() {
+  const { profile, hydrated } = useWealthProfile()
 
-  const status: 'critical' | 'attention' | 'healthy' =
-    critical.length > 0 ? 'critical' : warn.length > 0 ? 'attention' : 'healthy'
+  const projection = useMemo(() => {
+    if (!profile) return null
+    return projectWealth({
+      currentAge: profile.currentAge,
+      targetAge: TARGET_AGE,
+      currentSavings: profile.currentSavings,
+      monthlyInvestment: profile.monthlyInvestment,
+      annualReturnPct: profile.annualReturnPct,
+    })
+  }, [profile])
 
-  const statusMeta = {
-    critical: { dot: 'bg-rose-400', label: `${critical.length} critical · needs you now`, accent: 'text-rose-300' },
-    attention: { dot: 'bg-amber-300', label: `${warn.length} item${warn.length > 1 ? 's' : ''} need a look`, accent: 'text-amber-200' },
-    healthy: { dot: 'bg-emerald-400', label: 'business is healthy', accent: 'text-emerald-300' },
-  }[status]
+  const yearsToCr = useMemo(() => {
+    if (!profile) return null
+    return yearsToTarget(1_00_00_000, {
+      currentAge: profile.currentAge,
+      currentSavings: profile.currentSavings,
+      monthlyInvestment: profile.monthlyInvestment,
+      annualReturnPct: profile.annualReturnPct,
+    })
+  }, [profile])
 
-  const headline =
-    status === 'critical'
-      ? `${critical.length} ${critical.length === 1 ? 'leak is' : 'leaks are'} costing you ${inr(leakImpact)} a month.`
-      : status === 'attention'
-        ? warn[0].title.toLowerCase() + '.'
-        : `you're up ${revGrowth.toFixed(0)}% this month. runway is healthy.`
+  if (!hydrated) {
+    return <div className="p-10 text-white/40">loading…</div>
+  }
 
-  const sub =
-    status === 'critical'
-      ? `the upside — revenue is up ${revGrowth.toFixed(0)}% vs last month and you have ${s.runwayMonths.toFixed(1)} months of runway. fix the leak and you compound.`
-      : status === 'attention'
-        ? `${s.runwayMonths.toFixed(1)} months runway, ${(s.grossMargin30d * 100).toFixed(0)}% margin. otherwise you're in good shape.`
-        : `revenue ${inr(s.revenue30d)} this month, ${(s.grossMargin30d * 100).toFixed(0)}% margin. keep going — last month's ad shift is paying off.`
+  if (!profile) {
+    return (
+      <div className="p-6 lg:p-10 max-w-3xl">
+        <div className="rounded-3xl border border-[#B0C4DE]/20 bg-[#B0C4DE]/[0.04] p-10">
+          <Sparkles className="size-6 text-[#B0C4DE]" />
+          <h1 className="mt-5 text-3xl font-semibold tracking-tight">
+            see your trajectory in two minutes.
+          </h1>
+          <p className="mt-3 text-sm text-white/55 max-w-xl leading-relaxed">
+            answer four quick questions — age, income, savings, monthly investing — and Kuber builds your wealth trajectory plus the one lever that changes it.
+          </p>
+          <div className="mt-7 flex gap-3 flex-wrap">
+            <Link
+              href="/start/setup"
+              className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-medium text-black hover:bg-white/90"
+            >
+              start setup <ArrowRight className="size-4" />
+            </Link>
+            <Link
+              href="/app/chat"
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-5 py-2.5 text-sm text-white/70 hover:bg-white/[0.08] hover:text-white"
+            >
+              <MessageSquare className="size-4" /> ask Kuber instead
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const finalWealth = projection?.finalWealth ?? 0
+  const savingsRate = profile.monthlyIncome > 0
+    ? Math.round((profile.monthlyInvestment / profile.monthlyIncome) * 100)
+    : 0
 
   return (
-    <div className="p-6 lg:p-10 space-y-10 max-w-7xl">
+    <div className="p-6 lg:p-10 space-y-8 max-w-6xl">
       <div>
         <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1">
-          <span className={cn('size-1.5 rounded-full', statusMeta.dot)} />
-          <span className={cn('text-[11px] uppercase tracking-wider', statusMeta.accent)}>
-            {statusMeta.label}
-          </span>
+          <span className="size-1.5 rounded-full bg-emerald-400" />
+          <span className="text-[11px] uppercase tracking-wider text-emerald-300">on track</span>
         </div>
         <h1 className="text-2xl md:text-3xl font-medium text-white tracking-tight max-w-3xl">
-          {headline}
+          at your current rate, you&apos;ll have{' '}
+          <span className="bg-gradient-to-b from-[#d5e1f2] to-[#6b88af] bg-clip-text text-transparent tabular-nums">
+            {compactINR(finalWealth)}
+          </span>{' '}
+          by age {TARGET_AGE}.
         </h1>
-        <p className="text-sm text-white/55 mt-3 max-w-2xl leading-relaxed">{sub}</p>
-        <p className="text-[11px] text-white/30 mt-4 font-mono">
-          last refresh just now · 4 sources connected · 1,847 transactions analyzed
+        <p className="text-sm text-white/55 mt-3 max-w-2xl leading-relaxed">
+          {Number.isFinite(yearsToCr ?? Infinity)
+            ? `you reach ₹1 Cr in ${yearsToCr!.toFixed(1)} years at age ${Math.round(profile.currentAge + (yearsToCr ?? 0))}. `
+            : ''}
+          ask Kuber what one move pulls that closer.
         </p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard label="bank balance" value={inr(s.bankBalance)} sub="across 2 accounts" />
-        <MetricCard
-          label="runway"
-          value={Number.isFinite(s.runwayMonths) ? `${s.runwayMonths.toFixed(1)} mo` : '∞'}
-          sub={`at current burn of ${inr(s.netBurn30d)}/mo`}
-          tone={s.runwayMonths < 6 ? 'bad' : s.runwayMonths < 12 ? 'warn' : 'good'}
-        />
-        <MetricCard
-          label="revenue · 30d"
-          value={inr(s.revenue30d)}
-          sub={`${revGrowth >= 0 ? '↑' : '↓'} ${Math.abs(revGrowth).toFixed(0)}% vs prior 30d`}
-          tone={revGrowth >= 0 ? 'good' : 'warn'}
-        />
-        <MetricCard
-          label="gross margin · 30d"
-          value={`${(s.grossMargin30d * 100).toFixed(0)}%`}
-          sub={`after COGS · ${inr(s.refunds30d)} refunded`}
+        <Metric label="net worth today" value={compactINR(profile.currentSavings)} sub={`age ${profile.currentAge}`} />
+        <Metric label="monthly SIP" value={compactINR(profile.monthlyInvestment)} sub={`${savingsRate}% of income`} />
+        <Metric label="@ age 60" value={compactINR(finalWealth)} sub={`${profile.annualReturnPct}% expected return`} tone="good" />
+        <Metric
+          label="years to ₹1 Cr"
+          value={Number.isFinite(yearsToCr ?? Infinity) ? `${yearsToCr!.toFixed(1)} yrs` : '—'}
+          sub={Number.isFinite(yearsToCr ?? Infinity) ? `at age ${Math.round(profile.currentAge + (yearsToCr ?? 0))}` : 'lift SIP to reach'}
         />
       </div>
 
       <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
         <div className="flex items-baseline justify-between mb-5">
           <div>
-            <div className="text-xs uppercase tracking-wider text-white/40">cash position · 60 days</div>
-            <div className="text-lg text-white mt-1">{inr(s.bankBalance)} on hand today</div>
+            <div className="text-xs uppercase tracking-wider text-white/40">your trajectory</div>
+            <div className="text-lg text-white mt-1">age {profile.currentAge} → {TARGET_AGE}</div>
           </div>
-          <AskButton
-            text="forecast my cash for the next 90 days"
-            className="text-xs text-[#B0C4DE] hover:underline"
-          >
-            forecast next 90 days →
-          </AskButton>
+          <Link href="/start/trajectory" className="text-xs text-[#B0C4DE] hover:underline">
+            open full trajectory →
+          </Link>
         </div>
-        <CashChart data={cash} />
+        <div className="h-[240px]">
+          <ResponsiveContainer>
+            <AreaChart data={projection?.points ?? []} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="h-base" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#B0C4DE" stopOpacity={0.55} />
+                  <stop offset="100%" stopColor="#B0C4DE" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <XAxis
+                dataKey="age"
+                tick={{ fill: 'rgba(255,255,255,0.35)', fontSize: 11 }}
+                axisLine={{ stroke: 'rgba(255,255,255,0.08)' }}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fill: 'rgba(255,255,255,0.35)', fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+                width={56}
+                tickFormatter={(v) => compactINR(v).replace('₹', '')}
+              />
+              <Tooltip
+                cursor={{ stroke: 'rgba(176,196,222,0.25)', strokeWidth: 1 }}
+                formatter={(v: number) => [compactINR(v), 'Wealth']}
+                labelFormatter={(l) => `Age ${l}`}
+                contentStyle={{
+                  background: 'rgba(8,12,24,0.92)',
+                  border: '1px solid rgba(176,196,222,0.2)',
+                  borderRadius: 12,
+                }}
+              />
+              <Area type="monotone" dataKey="wealth" stroke="#B0C4DE" strokeWidth={2.2} fill="url(#h-base)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
       </section>
-
-      <div className="grid lg:grid-cols-2 gap-6">
-        <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
-          <div className="flex items-baseline justify-between mb-4">
-            <div className="text-xs uppercase tracking-wider text-white/40">money leaks · 30d</div>
-            <span className="text-[11px] text-rose-300/70">{s.leaks.length} active</span>
-          </div>
-          <div className="space-y-3">
-            {s.leaks.length === 0 && <div className="text-sm text-white/50">none detected. clean run.</div>}
-            {s.leaks.map((l, i) => (
-              <div key={i} className="flex gap-3 items-start border-b border-white/5 pb-3 last:border-0">
-                <div className="size-1.5 rounded-full bg-rose-300/80 mt-2 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm text-white">{l.title}</div>
-                  <div className="text-xs text-white/50 mt-0.5">{l.detail}</div>
-                </div>
-                <div className="text-xs text-rose-300/80 font-mono shrink-0">-{inr(l.impact)}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
-          <div className="flex items-baseline justify-between mb-4">
-            <div className="text-xs uppercase tracking-wider text-white/40">SKU contribution · 30d</div>
-            <span className="text-[11px] text-white/40">after COGS · returns · ads · shipping</span>
-          </div>
-          <div className="space-y-2">
-            {skuRows.map((s) => (
-              <div key={s.id} className="flex items-center gap-3 text-sm">
-                <span className="font-mono text-xs text-white/40 w-14">{s.id}</span>
-                <span className="flex-1 truncate text-white/80">{s.name}</span>
-                <span
-                  className={
-                    s.margin < 0
-                      ? 'text-rose-300 font-mono text-xs'
-                      : s.margin < 0.15
-                        ? 'text-amber-300/90 font-mono text-xs'
-                        : 'text-emerald-300/90 font-mono text-xs'
-                  }
-                >
-                  {(s.margin * 100).toFixed(0)}%
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-6">
-        <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
-          <div className="text-xs uppercase tracking-wider text-white/40 mb-4">GST · {s.gst.quarter}</div>
-          <div className="grid grid-cols-3 gap-4 text-sm">
-            <div>
-              <div className="text-[11px] text-white/40">est. liability</div>
-              <div className="text-white font-mono mt-1">{inr(s.gst.estimatedLiability)}</div>
-            </div>
-            <div>
-              <div className="text-[11px] text-white/40">paid</div>
-              <div className="text-white font-mono mt-1">{inr(s.gst.paid)}</div>
-            </div>
-            <div>
-              <div className="text-[11px] text-white/40">outstanding</div>
-              <div className="text-amber-300 font-mono mt-1">{inr(s.gst.outstanding)}</div>
-            </div>
-          </div>
-          <div className="mt-4 text-xs text-amber-200/70">
-            file by {s.gst.dueDate}. Kuber will draft the return 5 days prior.
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
-          <div className="text-xs uppercase tracking-wider text-white/40 mb-4">customer cohorts</div>
-          <div className="space-y-2 text-sm">
-            {cohorts.map((c) => (
-              <div key={c.month} className="flex items-center gap-3">
-                <span className="font-mono text-xs text-white/40 w-20">{c.month}</span>
-                <span className="text-white/70 w-24">{c.customers} customers</span>
-                <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-[#B0C4DE]/70"
-                    style={{ width: `${Math.min(100, (c.ltv / 4000) * 100)}%` }}
-                  />
-                </div>
-                <span className="font-mono text-xs text-white/60 w-20 text-right">{inr(c.ltv)} LTV</span>
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
 
       <div className="rounded-2xl border border-[#B0C4DE]/20 bg-[#B0C4DE]/[0.04] p-6">
         <div className="flex items-start gap-4">
@@ -199,23 +162,55 @@ export default function DashboardPage() {
           <div className="flex-1">
             <div className="text-sm text-white">Kuber suggests:</div>
             <div className="text-sm text-white/70 mt-1">
-              pause meta ads on SKU-03 for 7 days and route the {inr(15000)} into SKU-01 retargeting. last week&apos;s SKU-01 ROAS
-              was 4.2x while SKU-03 was 0.8x after returns.
+              add <span className="tabular-nums">₹5,000</span>/month to your SIP. that single step shortens your time to ₹1 Cr by roughly {(yearsToCr ? Math.max(0.5, yearsToCr * 0.08) : 1).toFixed(1)} years.
             </div>
             <div className="mt-3 flex gap-2">
-              <AskButton
-                text="walk me through the SKU-03 vs SKU-01 ad reallocation"
+              <Link
+                href={`/app/chat?q=${encodeURIComponent('what if I add ₹5,000 more to my SIP?')}`}
                 className="text-xs px-3 py-1.5 rounded-full bg-[#B0C4DE] text-black hover:bg-[#B0C4DE]/90"
               >
                 discuss with Kuber →
-              </AskButton>
-              <button className="text-xs px-3 py-1.5 rounded-full border border-white/10 text-white/60 hover:text-white">
-                dismiss
-              </button>
+              </Link>
+              <Link
+                href="/start/trajectory"
+                className="text-xs px-3 py-1.5 rounded-full border border-white/10 text-white/60 hover:text-white"
+              >
+                see the impact
+              </Link>
             </div>
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function Metric({
+  label,
+  value,
+  sub,
+  tone,
+}: {
+  label: string
+  value: string
+  sub: string
+  tone?: 'good' | 'warn' | 'bad'
+}) {
+  const toneClass =
+    tone === 'good'
+      ? 'text-emerald-300'
+      : tone === 'warn'
+        ? 'text-amber-300'
+        : tone === 'bad'
+          ? 'text-rose-300'
+          : 'text-white'
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+      <div className="text-[11px] uppercase tracking-wider text-white/40">{label}</div>
+      <div className={cn('mt-2 text-2xl font-semibold tracking-tight tabular-nums', toneClass)}>
+        {value}
+      </div>
+      <div className="mt-1 text-[12px] text-white/45">{sub}</div>
     </div>
   )
 }

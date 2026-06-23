@@ -3,17 +3,19 @@
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { ShiningText } from '@/components/ui/shining-text'
+import { DEFAULT_PROFILE, useWealthProfile } from '@/lib/wealth-store'
 
 const SUGGESTIONS = [
-  'how is the business doing right now?',
-  'which product is killing my margin?',
-  'how much runway do I have?',
-  'am I GST compliant this quarter?',
-  'who is my best customer cohort?',
-  'where am I leaking money?',
+  'when can I retire?',
+  'will I have a crore by 35?',
+  'what if I invest ₹10k more each month?',
+  'should I prepay my home loan or invest?',
+  'where am I quietly leaking money?',
+  'how does my savings rate compare?',
 ]
 
 export function ChatClient() {
@@ -21,18 +23,29 @@ export function ChatClient() {
   const [input, setInput] = useState('')
   const seededRef = useRef(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const { profile, hydrated } = useWealthProfile()
+  const activeProfile = profile ?? DEFAULT_PROFILE
 
-  const { messages, sendMessage, status, error } = useChat({
-    transport: new DefaultChatTransport({ api: '/api/chat' }),
-  })
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: '/api/chat',
+        prepareSendMessagesRequest: ({ messages }) => ({
+          body: { messages, profile: activeProfile },
+        }),
+      }),
+    [activeProfile],
+  )
+
+  const { messages, sendMessage, status, error } = useChat({ transport })
 
   useEffect(() => {
     const q = params.get('q')
-    if (q && !seededRef.current) {
+    if (q && !seededRef.current && hydrated) {
       seededRef.current = true
       sendMessage({ text: q })
     }
-  }, [params, sendMessage])
+  }, [params, sendMessage, hydrated])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -52,13 +65,26 @@ export function ChatClient() {
           {messages.length === 0 && (
             <div className="space-y-8">
               <div>
-                <div className="text-xs text-[#B0C4DE] uppercase tracking-wider mb-2">• war room</div>
-                <div className="text-3xl font-medium text-white">strategize with Kuber.</div>
+                <div className="text-xs text-[#B0C4DE] uppercase tracking-wider mb-2">· your coach</div>
+                <div className="text-3xl font-medium text-white">
+                  ask <span className="kuber-serif">Kuber</span> anything about your money.
+                </div>
                 <div className="text-sm text-white/50 mt-2">
-                  every number, every alert, every decision — work through it here. I&apos;ll pull the data
-                  myself.
+                  retirement, what-ifs, savings rate, leaks — every answer is computed from your real numbers, not guessed.
                 </div>
               </div>
+              {hydrated && !profile && (
+                <div className="rounded-2xl border border-[#B0C4DE]/20 bg-[#B0C4DE]/[0.04] p-4">
+                  <div className="text-sm text-white">no trajectory saved yet.</div>
+                  <div className="text-xs text-white/55 mt-1">
+                    Kuber will use a sample profile until you{' '}
+                    <Link href="/start/setup" className="text-[#B0C4DE] underline-offset-4 hover:underline">
+                      enter your numbers
+                    </Link>
+                    .
+                  </div>
+                </div>
+              )}
               <div className="grid sm:grid-cols-2 gap-2">
                 {SUGGESTIONS.map((s) => (
                   <button
@@ -79,7 +105,7 @@ export function ChatClient() {
 
           {(status === 'submitted' || status === 'streaming') && (
             <div className="flex items-center gap-3 pl-11">
-              <ShiningText text="Kuber is reading your numbers…" className="text-sm" />
+              <ShiningText text="Kuber is doing the math…" className="text-sm" />
             </div>
           )}
 
@@ -99,7 +125,7 @@ export function ChatClient() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={status !== 'ready'}
-            placeholder="ask Kuber anything…"
+            placeholder="ask Kuber anything about your wealth…"
             className="flex-1 bg-white/[0.04] border border-white/10 rounded-full px-5 py-3 text-sm text-white placeholder:text-white/40 outline-none focus:border-[#B0C4DE]/40 disabled:opacity-50"
           />
           <button

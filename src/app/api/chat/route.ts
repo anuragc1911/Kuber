@@ -1,158 +1,244 @@
 import { convertToModelMessages, streamText, stepCountIs, tool, type UIMessage } from 'ai'
 import { z } from 'zod'
 import {
-  customerCohorts,
-  customerStats,
-  dailyCashSeries,
-  expensesLast,
-  grossMarginLast,
-  gstStatus,
-  inr,
-  moneyLeaks,
-  revenueLast,
-  runwayMonths,
-  skuProfitability,
-  summary,
-} from '@/lib/metrics'
-import { businessName, expenses, founderName, orders, skus } from '@/lib/data'
-import { alerts, calendarEvents, kpis, reminders, reports } from '@/lib/activity'
+  compactINR,
+  fireNumber,
+  projectWealth,
+  whatIfLumpSum,
+  whatIfReturn,
+  whatIfSip,
+  yearsToTarget,
+  type WealthProfile,
+} from '@/lib/projection'
 
 export const maxDuration = 60
 
-const SYSTEM = `You are Kuber, an AI CFO for ${businessName} (founder: ${founderName}).
+const FALLBACK_PROFILE: WealthProfile = {
+  currentAge: 28,
+  monthlyIncome: 80_000,
+  currentSavings: 5_00_000,
+  monthlyInvestment: 25_000,
+  annualReturnPct: 12,
+}
 
-Voice: founder-to-founder, all-lowercase, direct, never corporate. use em dashes for asides. no fluff. answer first, evidence second.
+function buildSystemPrompt(p: WealthProfile) {
+  const sip = p.monthlyIncome > 0 ? Math.round((p.monthlyInvestment / p.monthlyIncome) * 100) : 0
+  return `You are Kuber, an AI wealth coach for an individual managing their own money.
 
-Format: 1-3 short paragraphs, OR a tight bulleted list when comparing items. Always cite numbers (₹ amounts, %, dates) — never vague claims. When you state a number, you must have called a tool to back it.
+The user's profile (their real numbers — use these in every calculation):
+- age: ${p.currentAge}
+- post-tax monthly income: ${compactINR(p.monthlyIncome)}
+- current savings + investments: ${compactINR(p.currentSavings)}
+- monthly investment / SIP: ${compactINR(p.monthlyInvestment)}
+- expected annual return: ${p.annualReturnPct}%
+- implied savings rate: ${sip}% of income
 
-Currency: INR. Use ₹ symbol. abbreviate ₹1,00,000 as ₹1L and ₹1,00,00,000 as ₹1Cr.
+Voice: coach-to-friend, all-lowercase, direct, plain language. answer first, math second. use em dashes for asides. no jargon. no preachy advice. respect the user's autonomy.
 
-Behavior: prefer calling tools to get real numbers from the user's data over guessing. if asked something outside the data (industry benchmarks, opinions on hiring), be honest — answer briefly and label as your judgment, not data.
+Currency: INR. use ₹. compact format: ₹1.2L for lakhs, ₹3.5 Cr for crores. always include the ₹ symbol.
 
-Today's date: 2026-05-04.`
+Math rule: NEVER guess numbers. for every projection, what-if, FIRE calc, or years-to-goal, call the matching tool. cite numbers as "₹2.4 Cr at 60" not "around 2 crore".
+
+Boundaries: you are a coaching tool, not a registered financial advisor. for specific investment, tax, or insurance decisions, gently point to a professional. don't recommend specific funds, stocks, or insurance products. compare options at the level of strategy ("invest the surplus vs prepay the loan"), not specific tickers.
+
+Format: 1-3 short paragraphs OR a tight bulleted list. when comparing options, lead with the verdict, then 2-3 lines of why.
+
+Today's date: 2026-05-16.`
+}
 
 export async function POST(req: Request) {
-  const { messages }: { messages: UIMessage[] } = await req.json()
+  const body = (await req.json()) as { messages: UIMessage[]; profile?: WealthProfile }
+  const profile = body.profile ?? FALLBACK_PROFILE
 
   const result = streamText({
     model: 'anthropic/claude-opus-4-7',
-    system: SYSTEM,
-    messages: await convertToModelMessages(messages),
+    system: buildSystemPrompt(profile),
+    messages: await convertToModelMessages(body.messages),
     stopWhen: stepCountIs(8),
     tools: {
-      get_summary: tool({
-        description: 'Top-line snapshot: bank balance, revenue 30d, gross margin, runway, burn, leaks, GST status. Call this first for general questions.',
+      get_profile: tool({
+        description: 'Read the current wealth profile. Use this when the user asks "what do you know about me" or to verify inputs before answering.',
         inputSchema: z.object({}),
-        execute: async () => summary(),
+        execute: async () => ({
+          ...profile,
+          formatted: {
+            currentSavings: compactINR(profile.currentSavings),
+            monthlyInvestment: compactINR(profile.monthlyInvestment),
+            monthlyIncome: compactINR(profile.monthlyIncome),
+          },
+        }),
       }),
-      get_revenue: tool({
-        description: 'Revenue total for the last N days (excludes refunded orders).',
-        inputSchema: z.object({ days: z.number().int().min(1).max(120) }),
-        execute: async ({ days }) => ({ days, revenue: revenueLast(days), formatted: inr(revenueLast(days)) }),
-      }),
-      get_expenses: tool({
-        description: 'Expense total for last N days, optionally filtered by category (ads, shipping, payroll, rent, saas, inventory, gst, misc).',
+      project_wealth: tool({
+        description: 'Project wealth at a target age using the user\'s current rate (savings + SIP + return). Returns the trajectory points and the final wealth.',
         inputSchema: z.object({
-          days: z.number().int().min(1).max(120),
-          category: z.enum(['ads', 'shipping', 'payroll', 'rent', 'saas', 'inventory', 'gst', 'misc']).optional(),
+          targetAge: z.number().int().min(profile.currentAge + 1).max(100),
         }),
-        execute: async ({ days, category }) => ({
-          days,
-          category: category || 'all',
-          total: expensesLast(days, category),
-          formatted: inr(expensesLast(days, category)),
-        }),
-      }),
-      get_runway: tool({
-        description: 'Months of runway at current burn, plus burn and balance.',
-        inputSchema: z.object({}),
-        execute: async () => {
-          const r = runwayMonths()
+        execute: async ({ targetAge }) => {
+          const r = projectWealth({
+            currentAge: profile.currentAge,
+            targetAge,
+            currentSavings: profile.currentSavings,
+            monthlyInvestment: profile.monthlyInvestment,
+            annualReturnPct: profile.annualReturnPct,
+          })
           return {
-            months: Number.isFinite(r) ? Number(r.toFixed(1)) : null,
-            note: Number.isFinite(r) ? null : 'business is profitable — no burn',
-            ...summary(),
+            finalAge: targetAge,
+            finalWealth: r.finalWealth,
+            formatted: compactINR(r.finalWealth),
+            sampledPoints: r.points.filter((_, idx) => idx % Math.max(1, Math.floor(r.points.length / 8)) === 0),
           }
         },
       }),
-      get_sku_profitability: tool({
-        description: 'Per-SKU profitability over 30 days — revenue, refunds, COGS, allocated ads/shipping, contribution margin %.',
-        inputSchema: z.object({}),
-        execute: async () => skuProfitability(),
-      }),
-      get_money_leaks: tool({
-        description: 'Detected money leaks: losing SKUs, refund spikes, CAC drift, with rupee impact.',
-        inputSchema: z.object({}),
-        execute: async () => moneyLeaks(),
-      }),
-      get_customer_metrics: tool({
-        description: 'Customer counts, CAC, AOV for last N days plus cohort table by acquisition month.',
-        inputSchema: z.object({ days: z.number().int().min(1).max(120).default(30) }),
-        execute: async ({ days }) => ({ stats: customerStats(days), cohorts: customerCohorts() }),
-      }),
-      get_gross_margin: tool({
-        description: 'Gross margin % (revenue minus COGS) over last N days.',
-        inputSchema: z.object({ days: z.number().int().min(1).max(120) }),
-        execute: async ({ days }) => ({ days, marginPct: Number((grossMarginLast(days) * 100).toFixed(2)) }),
-      }),
-      get_gst_status: tool({
-        description: 'GST liability for the current quarter, paid amount, outstanding, due date.',
-        inputSchema: z.object({}),
-        execute: async () => gstStatus(),
-      }),
-      get_cash_series: tool({
-        description: 'Daily cash balance, inflow, outflow for last N days.',
-        inputSchema: z.object({ days: z.number().int().min(7).max(120).default(30) }),
-        execute: async ({ days }) => dailyCashSeries(days),
-      }),
-      list_recent_orders: tool({
-        description: 'Recent N orders (most recent first).',
-        inputSchema: z.object({ limit: z.number().int().min(1).max(50).default(10) }),
-        execute: async ({ limit }) => orders.slice(-limit).reverse(),
-      }),
-      list_recent_expenses: tool({
-        description: 'Recent N expenses (most recent first), optionally filtered by category.',
+      years_to_target: tool({
+        description: 'Years from now until the user reaches a specific wealth target (e.g. ₹1 Cr, ₹4 Cr FIRE number). Returns years + the age at which they hit it.',
         inputSchema: z.object({
-          limit: z.number().int().min(1).max(50).default(10),
-          category: z.enum(['ads', 'shipping', 'payroll', 'rent', 'saas', 'inventory', 'gst', 'misc']).optional(),
+          target: z.number().positive().describe('Target wealth in INR (e.g. 10000000 for ₹1 Cr).'),
         }),
-        execute: async ({ limit, category }) => {
-          const f = category ? expenses.filter((e) => e.category === category) : expenses
-          return f.slice(-limit).reverse()
+        execute: async ({ target }) => {
+          const yrs = yearsToTarget(target, {
+            currentAge: profile.currentAge,
+            currentSavings: profile.currentSavings,
+            monthlyInvestment: profile.monthlyInvestment,
+            annualReturnPct: profile.annualReturnPct,
+          })
+          if (!Number.isFinite(yrs)) {
+            return {
+              reachable: false,
+              note: 'not reachable at current rate within 80 years. suggest raising SIP, raising return assumption, or lowering the target.',
+            }
+          }
+          return {
+            reachable: true,
+            years: Number(yrs.toFixed(1)),
+            atAge: Math.round(profile.currentAge + yrs),
+            target,
+            targetFormatted: compactINR(target),
+          }
         },
       }),
-      list_skus: tool({
-        description: 'All SKUs with prices and unit cost.',
-        inputSchema: z.object({}),
-        execute: async () => skus,
-      }),
-      get_alerts: tool({
-        description: 'Active alerts the system has flagged: runway dips, refund spikes, SKU losses, GST due, CAC drift. Includes severity and Kuber suggestions.',
-        inputSchema: z.object({}),
-        execute: async () => alerts(),
-      }),
-      get_reminders: tool({
-        description: 'Upcoming reminders with due dates: GST filing, payroll, TDS, inventory, vendor invoices.',
-        inputSchema: z.object({}),
-        execute: async () => reminders(),
-      }),
-      get_calendar: tool({
-        description: 'Calendar events for a given month — reminders, revenue spikes, big expenses, milestones. month is 0-indexed (0=Jan).',
+      fire_number: tool({
+        description: 'Calculate the user\'s FIRE number (financial independence target) given annual expenses, using the 4% safe withdrawal rate by default. Returns the corpus needed and years to reach it.',
         inputSchema: z.object({
-          year: z.number().int().min(2024).max(2030),
-          month: z.number().int().min(0).max(11),
+          annualExpenses: z.number().positive().describe('Estimated annual expenses in retirement (INR).'),
+          swr: z.number().min(0.02).max(0.08).default(0.04).describe('Safe withdrawal rate (4% default).'),
         }),
-        execute: async ({ year, month }) => calendarEvents(year, month),
+        execute: async ({ annualExpenses, swr }) => {
+          const target = fireNumber(annualExpenses, swr)
+          const yrs = yearsToTarget(target, {
+            currentAge: profile.currentAge,
+            currentSavings: profile.currentSavings,
+            monthlyInvestment: profile.monthlyInvestment,
+            annualReturnPct: profile.annualReturnPct,
+          })
+          return {
+            fireNumber: target,
+            fireNumberFormatted: compactINR(target),
+            swr,
+            yearsToReach: Number.isFinite(yrs) ? Number(yrs.toFixed(1)) : null,
+            atAge: Number.isFinite(yrs) ? Math.round(profile.currentAge + yrs) : null,
+          }
+        },
       }),
-      get_kpis: tool({
-        description: 'All 12 business KPIs across growth, profitability, efficiency, cash — with trends.',
-        inputSchema: z.object({}),
-        execute: async () => kpis(),
+      what_if_sip_change: tool({
+        description: 'Model the impact of changing the user\'s monthly SIP by a delta (positive or negative). Compare base vs new trajectory at a target age.',
+        inputSchema: z.object({
+          deltaInr: z.number().describe('Change to monthly SIP in INR. Positive to increase, negative to decrease.'),
+          targetAge: z.number().int().min(profile.currentAge + 1).max(100).default(60),
+        }),
+        execute: async ({ deltaInr, targetAge }) => {
+          const baseInputs = {
+            currentAge: profile.currentAge,
+            targetAge,
+            currentSavings: profile.currentSavings,
+            monthlyInvestment: profile.monthlyInvestment,
+            annualReturnPct: profile.annualReturnPct,
+          }
+          const base = projectWealth(baseInputs)
+          const next = whatIfSip(deltaInr, baseInputs)
+          return {
+            targetAge,
+            base: { finalWealth: base.finalWealth, formatted: compactINR(base.finalWealth) },
+            withChange: { finalWealth: next.finalWealth, formatted: compactINR(next.finalWealth) },
+            delta: next.finalWealth - base.finalWealth,
+            deltaFormatted: compactINR(next.finalWealth - base.finalWealth),
+            newMonthlySip: profile.monthlyInvestment + deltaInr,
+          }
+        },
       }),
-      get_reports: tool({
-        description: 'List of generated reports (P&L, GST, investor update, SKU, cohort) with periods and summaries.',
+      what_if_return: tool({
+        description: 'Model the impact of a different annual return assumption (e.g. conservative 9% vs optimistic 14%).',
+        inputSchema: z.object({
+          newPct: z.number().min(0).max(30),
+          targetAge: z.number().int().min(profile.currentAge + 1).max(100).default(60),
+        }),
+        execute: async ({ newPct, targetAge }) => {
+          const baseInputs = {
+            currentAge: profile.currentAge,
+            targetAge,
+            currentSavings: profile.currentSavings,
+            monthlyInvestment: profile.monthlyInvestment,
+            annualReturnPct: profile.annualReturnPct,
+          }
+          const base = projectWealth(baseInputs)
+          const next = whatIfReturn(newPct, baseInputs)
+          return {
+            targetAge,
+            baseReturn: profile.annualReturnPct,
+            newReturn: newPct,
+            base: { finalWealth: base.finalWealth, formatted: compactINR(base.finalWealth) },
+            withChange: { finalWealth: next.finalWealth, formatted: compactINR(next.finalWealth) },
+            delta: next.finalWealth - base.finalWealth,
+            deltaFormatted: compactINR(next.finalWealth - base.finalWealth),
+          }
+        },
+      }),
+      what_if_lump_sum: tool({
+        description: 'Model adding a one-time lump sum (e.g. bonus, gift, sale proceeds) to current investments today.',
+        inputSchema: z.object({
+          amount: z.number().positive(),
+          targetAge: z.number().int().min(profile.currentAge + 1).max(100).default(60),
+        }),
+        execute: async ({ amount, targetAge }) => {
+          const baseInputs = {
+            currentAge: profile.currentAge,
+            targetAge,
+            currentSavings: profile.currentSavings,
+            monthlyInvestment: profile.monthlyInvestment,
+            annualReturnPct: profile.annualReturnPct,
+          }
+          const base = projectWealth(baseInputs)
+          const next = whatIfLumpSum(amount, baseInputs)
+          return {
+            targetAge,
+            lumpSum: amount,
+            lumpSumFormatted: compactINR(amount),
+            base: { finalWealth: base.finalWealth, formatted: compactINR(base.finalWealth) },
+            withChange: { finalWealth: next.finalWealth, formatted: compactINR(next.finalWealth) },
+            delta: next.finalWealth - base.finalWealth,
+            deltaFormatted: compactINR(next.finalWealth - base.finalWealth),
+          }
+        },
+      }),
+      savings_rate: tool({
+        description: 'Current savings rate as % of income (monthly investment / monthly income).',
         inputSchema: z.object({}),
-        execute: async () => reports(),
+        execute: async () => {
+          const rate = profile.monthlyIncome > 0
+            ? Math.round((profile.monthlyInvestment / profile.monthlyIncome) * 100)
+            : 0
+          let band: string
+          if (rate >= 40) band = 'top decile'
+          else if (rate >= 30) band = 'top quartile'
+          else if (rate >= 20) band = 'above median'
+          else if (rate >= 10) band = 'below median'
+          else band = 'lowest quartile'
+          return {
+            ratePct: rate,
+            band,
+            monthlyInvested: compactINR(profile.monthlyInvestment),
+            monthlyIncome: compactINR(profile.monthlyIncome),
+          }
+        },
       }),
     },
   })

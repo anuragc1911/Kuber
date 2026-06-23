@@ -3,7 +3,6 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
-import { getUserOrgs } from '@/lib/supabase/orgs'
 
 export type AuthResult = { ok: true } | { ok: false; error: string }
 
@@ -28,14 +27,6 @@ export async function signIn(formData: FormData): Promise<AuthResult> {
   if (error) return { ok: false, error: error.message.toLowerCase() }
 
   revalidatePath('/', 'layout')
-
-  // First-time users land on onboarding to create their workspace.
-  try {
-    const orgs = await getUserOrgs()
-    if (orgs.length === 0) redirect('/onboarding/create-org')
-  } catch {
-    // Tables may not be applied yet; let them through.
-  }
   redirect('/app')
 }
 
