@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, ArrowLeft } from 'lucide-react'
 import { AnimatedGroup } from '@/components/ui/animated-group'
 import { DEFAULT_PROFILE, writeProfile } from '@/lib/wealth-store'
 import type { WealthProfile } from '@/lib/projection'
@@ -15,7 +15,7 @@ const transitionVariants = {
       opacity: 1,
       filter: 'blur(0px)',
       y: 0,
-      transition: { type: 'spring', bounce: 0.3, duration: 1.5 },
+      transition: { type: 'spring', bounce: 0.3, duration: 1.2 },
     },
   },
 }
@@ -36,7 +36,7 @@ const STEPS: StepDef[] = [
   {
     key: 'currentAge',
     prompt: 'how old are you?',
-    hint: 'compound time is your biggest lever — even one year matters.',
+    hint: 'compound time is your biggest lever.',
     min: 18,
     max: 65,
     step: 1,
@@ -66,7 +66,7 @@ const STEPS: StepDef[] = [
   {
     key: 'currentSavings',
     prompt: 'savings + investments today.',
-    hint: 'bank, FDs, MFs, stocks, EPF, gold — all of it. your best estimate is fine.',
+    hint: 'bank, FDs, MFs, stocks, EPF, gold — all of it.',
     min: 0,
     max: 5_00_00_000,
     step: 50_000,
@@ -81,7 +81,7 @@ const STEPS: StepDef[] = [
   {
     key: 'monthlyInvestment',
     prompt: 'how much do you invest each month?',
-    hint: 'SIPs, NPS, EPF, recurring deposits — anything that\'s headed toward your future.',
+    hint: 'SIPs, NPS, EPF — anything headed toward your future.',
     min: 0,
     max: 5_00_000,
     step: 1_000,
@@ -104,7 +104,7 @@ export default function SetupPage() {
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    inputRef.current?.focus()
+    inputRef.current?.focus({ preventScroll: true })
   }, [step])
 
   function setValue(n: number) {
@@ -130,45 +130,47 @@ export default function SetupPage() {
   const display = cur.format ? cur.format(value) : value.toString()
 
   return (
-    <section className="relative px-6 py-12 md:py-20">
-      <div className="mx-auto max-w-xl">
-        <div className="mb-10 flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-white/40">
+    <section className="relative flex min-h-[calc(100vh-3.5rem)] flex-col justify-between py-6 pb-8">
+      <div>
+        <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-white/40">
           <button
             onClick={back}
-            className="hover:text-white transition"
+            className="inline-flex items-center gap-1.5 min-h-[40px] hover:text-white transition active:scale-95"
+            aria-label="back"
           >
-            ← back
+            <ArrowLeft className="size-3.5" />
+            back
           </button>
-          <span>
-            step {step + 1} <span className="text-white/20">/</span> {STEPS.length}
+          <span className="tabular-nums">
+            {step + 1} <span className="text-white/20">/</span> {STEPS.length}
           </span>
         </div>
 
-        <div className="mb-8 h-px w-full bg-white/[0.05] overflow-hidden rounded-full">
+        <div className="mt-4 h-[3px] w-full overflow-hidden rounded-full bg-white/[0.05]">
           <div
-            className="h-full bg-gradient-to-r from-[#B0C4DE] to-[#d5e1f2] transition-all duration-500 ease-out"
+            className="h-full rounded-full bg-gradient-to-r from-[#B0C4DE] to-[#d5e1f2] transition-all duration-500 ease-out"
             style={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
           />
         </div>
 
         <AnimatedGroup key={step} variants={transitionVariants}>
-          <div className="text-[12px] uppercase tracking-[0.18em] text-[#B0C4DE]/70">
-            question {step + 1} of {STEPS.length}
+          <div className="mt-8 text-[11px] uppercase tracking-[0.18em] text-[#B0C4DE]/70">
+            question {step + 1}
           </div>
-          <h1 className="mt-3 text-[clamp(1.75rem,4vw,2.5rem)] font-semibold tracking-tight leading-[1.1]">
+          <h1 className="mt-2 text-[clamp(1.625rem,6vw,2.125rem)] font-semibold tracking-tight leading-[1.15]">
             {cur.prompt}
           </h1>
           {cur.hint && (
-            <p className="mt-3 text-sm text-white/45 leading-relaxed">{cur.hint}</p>
+            <p className="mt-2.5 text-[13px] text-white/45 leading-relaxed">{cur.hint}</p>
           )}
 
-          <div className="mt-10 rounded-2xl border border-white/10 bg-white/[0.02] p-6 backdrop-blur-sm">
-            <div className="flex items-baseline justify-between">
-              <span className="text-[11px] uppercase tracking-wider text-white/40">your answer</span>
-              <span className="text-3xl font-semibold tracking-tight tabular-nums">
+          <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+            <div className="text-center">
+              <div className="text-[10px] uppercase tracking-wider text-white/35">your answer</div>
+              <div className="mt-2 text-[clamp(2rem,9vw,2.75rem)] font-semibold tracking-tight tabular-nums leading-none">
                 {display}
-                {cur.suffix ? <span className="ml-1 text-base text-white/40">{cur.suffix}</span> : null}
-              </span>
+                {cur.suffix ? <span className="ml-2 text-base text-white/40 align-middle">{cur.suffix}</span> : null}
+              </div>
             </div>
             <input
               ref={inputRef}
@@ -178,18 +180,18 @@ export default function SetupPage() {
               step={cur.step}
               value={value}
               onChange={(e) => setValue(Number(e.target.value))}
-              className="kuber-slider mt-5 w-full"
+              className="kuber-slider mt-6 w-full"
               style={{
                 background: `linear-gradient(90deg, #B0C4DE 0%, #d5e1f2 ${pctVal}%, rgba(176,196,222,0.10) ${pctVal}%)`,
               }}
             />
             {cur.quickHints && (
-              <div className="mt-5 flex flex-wrap gap-1.5">
+              <div className="mt-5 grid grid-cols-4 gap-1.5">
                 {cur.quickHints.map((q) => (
                   <button
                     key={q.label}
                     onClick={() => setValue(q.value)}
-                    className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] text-white/55 transition hover:border-white/20 hover:bg-white/[0.06] hover:text-white"
+                    className="rounded-xl border border-white/10 bg-white/[0.03] px-2 py-2.5 text-[12px] text-white/60 active:scale-95 active:bg-white/[0.08] transition"
                   >
                     {q.label}
                   </button>
@@ -197,15 +199,17 @@ export default function SetupPage() {
               </div>
             )}
           </div>
-
-          <button
-            onClick={next}
-            className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-white px-7 py-3.5 text-[15px] font-medium text-black shadow-[0_24px_48px_rgba(0,0,0,0.4)] transition-all duration-200 hover:bg-white/90 sm:w-auto"
-          >
-            {step < STEPS.length - 1 ? 'next' : 'show me my trajectory'}
-            <ArrowRight className="size-4" />
-          </button>
         </AnimatedGroup>
+      </div>
+
+      <div className="mt-8 sticky bottom-4">
+        <button
+          onClick={next}
+          className="flex w-full min-h-[52px] items-center justify-center gap-2 rounded-2xl bg-white text-[15px] font-medium text-black shadow-[0_24px_48px_rgba(255,255,255,0.06)] active:scale-[0.99] transition-all"
+        >
+          {step < STEPS.length - 1 ? 'next' : 'show my trajectory'}
+          <ArrowRight className="size-4" />
+        </button>
       </div>
     </section>
   )

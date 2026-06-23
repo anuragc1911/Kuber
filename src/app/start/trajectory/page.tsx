@@ -16,7 +16,7 @@ const transitionVariants = {
       opacity: 1,
       filter: 'blur(0px)',
       y: 0,
-      transition: { type: 'spring', bounce: 0.3, duration: 1.5 },
+      transition: { type: 'spring', bounce: 0.3, duration: 1.2 },
     },
   },
 }
@@ -96,207 +96,210 @@ export default function TrajectoryPage() {
     : 0
 
   return (
-    <section className="relative px-5 py-12 sm:px-6 md:py-16">
-      <div className="mx-auto max-w-5xl">
-        <AnimatedGroup variants={transitionVariants}>
-          <div className="text-center">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-white/55 backdrop-blur-md">
-              <span className="size-1 rounded-full bg-[#B0C4DE] shadow-[0_0_8px_#B0C4DE]" />
-              your trajectory
-            </div>
-            <h1 className="mx-auto max-w-3xl bg-gradient-to-b from-white to-white/70 bg-clip-text text-[clamp(2rem,5vw,3.5rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-transparent">
-              at your current rate, you&apos;ll have{' '}
-              <span className="bg-gradient-to-b from-[#d5e1f2] to-[#6b88af] bg-clip-text text-transparent tabular-nums">
-                {compactINR(base.finalWealth)}
-              </span>{' '}
-              by age {TARGET_AGE}.
-            </h1>
-            <p className="mx-auto mt-5 max-w-2xl text-base text-white/55 leading-relaxed">
-              invest <span className="text-white tabular-nums">{compactINR(sipBoost)}</span> more each month and that becomes{' '}
-              <span className="bg-gradient-to-b from-[#E9C77B] to-[#9C7E36] bg-clip-text text-transparent font-semibold tabular-nums">
-                {compactINR(boosted.finalWealth)}
-              </span>{' '}
-              <span className="text-white/40">— {compactINR(delta)} more, same effort.</span>
-            </p>
+    <section className="relative py-6 pb-10 space-y-6">
+      <AnimatedGroup variants={transitionVariants}>
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-white/55">
+            <span className="size-1 rounded-full bg-[#B0C4DE] shadow-[0_0_8px_#B0C4DE]" />
+            your trajectory
           </div>
-        </AnimatedGroup>
+          <h1 className="mt-4 bg-gradient-to-b from-white to-white/70 bg-clip-text text-[clamp(1.75rem,7vw,2.5rem)] font-semibold leading-[1.1] tracking-[-0.025em] text-transparent">
+            at your current rate,
+            <br />
+            you&apos;ll have{' '}
+            <span className="bg-gradient-to-b from-[#d5e1f2] to-[#6b88af] bg-clip-text text-transparent tabular-nums">
+              {compactINR(base.finalWealth)}
+            </span>
+            <br />
+            by age {TARGET_AGE}.
+          </h1>
+          <p className="mt-4 text-[14px] text-white/55 leading-relaxed">
+            add <span className="text-white tabular-nums">{compactINR(sipBoost)}</span>/mo and that becomes{' '}
+            <span className="bg-gradient-to-b from-[#E9C77B] to-[#9C7E36] bg-clip-text text-transparent font-semibold tabular-nums">
+              {compactINR(boosted.finalWealth)}
+            </span>{' '}
+            — {compactINR(delta)} more, same effort.
+          </p>
+        </div>
+      </AnimatedGroup>
 
-        <AnimatedGroup variants={transitionVariants}>
-          <div
-            className="relative mt-10 rounded-3xl border border-white/10 p-6 md:p-8 backdrop-blur-md"
+      <AnimatedGroup variants={transitionVariants}>
+        <div
+          className="relative rounded-2xl border border-white/10 p-4 backdrop-blur-md"
+          style={{
+            background:
+              'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)',
+            boxShadow:
+              'inset 0 1px 0 rgba(255,255,255,0.06), 0 30px 60px -30px rgba(3,7,18,0.9)',
+          }}
+        >
+          <div className="h-[220px] -mx-2">
+            <ResponsiveContainer>
+              <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="t-base" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#B0C4DE" stopOpacity={0.55} />
+                    <stop offset="100%" stopColor="#B0C4DE" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="t-boost" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#E9C77B" stopOpacity={0.35} />
+                    <stop offset="100%" stopColor="#E9C77B" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis
+                  dataKey="age"
+                  tick={{ fill: 'rgba(255,255,255,0.35)', fontSize: 10 }}
+                  axisLine={{ stroke: 'rgba(255,255,255,0.08)' }}
+                  tickLine={false}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  tick={{ fill: 'rgba(255,255,255,0.35)', fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={44}
+                  tickFormatter={(v) => compactINR(v).replace('₹', '')}
+                />
+                {reachesCrAt && (
+                  <ReferenceLine
+                    x={reachesCrAt}
+                    stroke="rgba(233,199,123,0.55)"
+                    strokeDasharray="3 4"
+                    label={{ value: `₹1 Cr · ${reachesCrAt}`, position: 'insideTopLeft', fill: '#E9C77B', fontSize: 9, dx: 6 }}
+                  />
+                )}
+                <Tooltip
+                  cursor={{ stroke: 'rgba(176,196,222,0.25)', strokeWidth: 1 }}
+                  formatter={(v: number, key) => [compactINR(v), key === 'boosted' ? `+${compactINR(sipBoost)}/mo` : 'Current']}
+                  labelFormatter={(l) => `Age ${l}`}
+                  contentStyle={{
+                    background: 'rgba(8,12,24,0.92)',
+                    border: '1px solid rgba(176,196,222,0.2)',
+                    borderRadius: 12,
+                    fontSize: 12,
+                  }}
+                  labelStyle={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}
+                />
+                <Area type="monotone" dataKey="boosted" stroke="#E9C77B" strokeWidth={1.5} strokeDasharray="4 4" fill="url(#t-boost)" />
+                <Area type="monotone" dataKey="base" stroke="#B0C4DE" strokeWidth={2.2} fill="url(#t-base)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="mt-2 flex items-center justify-between text-[11px] text-white/40">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="size-1.5 rounded-full bg-[#B0C4DE] shadow-[0_0_6px_#B0C4DE]" />
+              current
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="size-1.5 rounded-full bg-[#E9C77B] shadow-[0_0_6px_#E9C77B]" />
+              +{compactINR(sipBoost)}/mo
+            </span>
+          </div>
+        </div>
+      </AnimatedGroup>
+
+      <AnimatedGroup variants={transitionVariants}>
+        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+          <div className="flex items-baseline justify-between">
+            <div className="text-[11px] uppercase tracking-wider text-white/40">the one lever</div>
+            <span className="text-[10px] text-white/30">drag to feel impact</span>
+          </div>
+          <h3 className="mt-2 text-[18px] font-semibold tracking-tight">
+            add <span className="tabular-nums">{compactINR(sipBoost)}</span>/month
+          </h3>
+          <p className="mt-1.5 text-[13px] text-white/55 leading-relaxed">
+            that&apos;s {compactINR(sipBoost * 12)} a year. by age {TARGET_AGE} it compounds into{' '}
+            <span className="text-white font-medium tabular-nums">{compactINR(delta)}</span> extra.
+          </p>
+
+          <input
+            type="range"
+            min={0}
+            max={50_000}
+            step={1000}
+            value={sipBoost}
+            onChange={(e) => setSipBoost(Number(e.target.value))}
+            className="kuber-slider mt-5 w-full"
             style={{
-              background:
-                'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)',
-              boxShadow:
-                'inset 0 1px 0 rgba(255,255,255,0.06), 0 30px 60px -30px rgba(3,7,18,0.9)',
+              background: `linear-gradient(90deg, #E9C77B 0%, #fff0c5 ${(sipBoost / 50_000) * 100}%, rgba(233,199,123,0.10) ${(sipBoost / 50_000) * 100}%)`,
             }}
-          >
-            <div className="h-[280px] sm:h-[340px] -mx-2">
-              <ResponsiveContainer>
-                <AreaChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="t-base" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#B0C4DE" stopOpacity={0.55} />
-                      <stop offset="100%" stopColor="#B0C4DE" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="t-boost" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#E9C77B" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="#E9C77B" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis
-                    dataKey="age"
-                    tick={{ fill: 'rgba(255,255,255,0.35)', fontSize: 11 }}
-                    axisLine={{ stroke: 'rgba(255,255,255,0.08)' }}
-                    tickLine={false}
-                    interval="preserveStartEnd"
-                  />
-                  <YAxis
-                    tick={{ fill: 'rgba(255,255,255,0.35)', fontSize: 11 }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={56}
-                    tickFormatter={(v) => compactINR(v).replace('₹', '')}
-                  />
-                  {reachesCrAt && (
-                    <ReferenceLine
-                      x={reachesCrAt}
-                      stroke="rgba(233,199,123,0.55)"
-                      strokeDasharray="3 4"
-                      label={{ value: `₹1 Cr @ ${reachesCrAt}`, position: 'insideTopLeft', fill: '#E9C77B', fontSize: 10, dx: 8 }}
-                    />
-                  )}
-                  <Tooltip
-                    cursor={{ stroke: 'rgba(176,196,222,0.25)', strokeWidth: 1 }}
-                    formatter={(v: number, key) => [compactINR(v), key === 'boosted' ? `+${compactINR(sipBoost)}/mo` : 'Current rate']}
-                    labelFormatter={(l) => `Age ${l}`}
-                    contentStyle={{
-                      background: 'rgba(8,12,24,0.92)',
-                      border: '1px solid rgba(176,196,222,0.2)',
-                      borderRadius: 12,
-                      backdropFilter: 'blur(10px)',
-                    }}
-                    labelStyle={{ color: 'rgba(255,255,255,0.6)' }}
-                  />
-                  <Area type="monotone" dataKey="boosted" stroke="#E9C77B" strokeWidth={1.5} strokeDasharray="4 4" fill="url(#t-boost)" />
-                  <Area type="monotone" dataKey="base" stroke="#B0C4DE" strokeWidth={2.2} fill="url(#t-base)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="mt-2 flex items-center gap-4 text-[12px] text-white/40">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-[#B0C4DE] shadow-[0_0_8px_#B0C4DE]" />
-                your current rate
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-[#E9C77B] shadow-[0_0_8px_#E9C77B]" />
-                with +{compactINR(sipBoost)}/mo
-              </span>
-            </div>
+          />
+          <div className="mt-1.5 flex justify-between text-[10px] tabular-nums text-white/35">
+            <span>₹0</span>
+            <span>+{compactINR(sipBoost)}/mo</span>
+            <span>₹50k</span>
           </div>
-        </AnimatedGroup>
+        </div>
+      </AnimatedGroup>
 
-        <AnimatedGroup variants={transitionVariants}>
-          <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-5">
-            <div className="lg:col-span-3 rounded-2xl border border-white/10 bg-white/[0.02] p-6">
-              <div className="flex items-baseline justify-between">
-                <div className="text-[11px] uppercase tracking-wider text-white/40">the one lever</div>
-                <span className="text-[11px] text-white/30">drag to feel the impact</span>
-              </div>
-              <h3 className="mt-2 text-xl font-semibold tracking-tight">
-                add <span className="tabular-nums">{compactINR(sipBoost)}</span>/month to your investing.
-              </h3>
-              <p className="mt-2 text-sm text-white/55 leading-relaxed">
-                that&apos;s {compactINR(sipBoost * 12)} a year. by age {TARGET_AGE} it compounds into{' '}
-                <span className="text-white font-medium tabular-nums">{compactINR(delta)}</span> of extra wealth.
-              </p>
+      <AnimatedGroup variants={transitionVariants}>
+        <div className="grid grid-cols-2 gap-3">
+          <Stat
+            label="time to ₹1 Cr"
+            value={Number.isFinite(yearsToCr) ? `${yearsToCr.toFixed(1)} yr` : '—'}
+            sub={Number.isFinite(yearsToCr) ? `age ${Math.round(profile.currentAge + yearsToCr)}` : 'lift SIP'}
+          />
+          <Stat
+            label="savings rate"
+            value={`${savingsRate}%`}
+            sub={savingsRate >= 30 ? 'top quartile' : savingsRate >= 15 ? 'add ₹5k to step up' : 'your biggest lever'}
+          />
+        </div>
+      </AnimatedGroup>
 
-              <input
-                type="range"
-                min={0}
-                max={50_000}
-                step={1000}
-                value={sipBoost}
-                onChange={(e) => setSipBoost(Number(e.target.value))}
-                className="kuber-slider mt-5 w-full"
-                style={{
-                  background: `linear-gradient(90deg, #E9C77B 0%, #fff0c5 ${(sipBoost / 50_000) * 100}%, rgba(233,199,123,0.10) ${(sipBoost / 50_000) * 100}%)`,
-                }}
-              />
-              <div className="mt-2 flex justify-between text-[11px] tabular-nums text-white/35">
-                <span>₹0</span>
-                <span>+{compactINR(sipBoost)}/mo</span>
-                <span>₹50k</span>
-              </div>
-            </div>
-
-            <div className="lg:col-span-2 space-y-4">
-              <Stat
-                label="years to your first crore"
-                value={Number.isFinite(yearsToCr) ? `${yearsToCr.toFixed(1)} yrs` : '—'}
-                sub={Number.isFinite(yearsToCr) ? `at age ${Math.round(profile.currentAge + yearsToCr)}` : 'not at this rate'}
-              />
-              <Stat
-                label="your savings rate"
-                value={`${savingsRate}%`}
-                sub={savingsRate >= 30 ? 'top quartile · keep going' : savingsRate >= 15 ? 'okay — add ₹5k to step up' : 'lifting this is your biggest lever'}
-              />
-            </div>
+      <AnimatedGroup variants={transitionVariants}>
+        <div className="rounded-2xl border border-[#B0C4DE]/20 bg-[#B0C4DE]/[0.05] p-5">
+          <div className="size-9 rounded-full bg-[#B0C4DE]/20 flex items-center justify-center text-[#B0C4DE] kuber-serif text-sm">
+            K
           </div>
-        </AnimatedGroup>
-
-        <AnimatedGroup variants={transitionVariants}>
-          <div className="mt-10 rounded-3xl border border-[#B0C4DE]/20 bg-[#B0C4DE]/[0.05] p-8 md:p-10 text-center">
-            <div className="mx-auto size-10 rounded-full bg-[#B0C4DE]/20 flex items-center justify-center text-[#B0C4DE] kuber-serif text-base">
-              K
-            </div>
-            <h3 className="mt-5 text-2xl font-semibold tracking-tight">
-              this is just the start. ask <span className="kuber-serif">Kuber</span> anything.
-            </h3>
-            <p className="mt-3 text-sm text-white/55 max-w-xl mx-auto leading-relaxed">
-              &ldquo;when can I retire?&rdquo; · &ldquo;what if I take a sabbatical?&rdquo; · &ldquo;should I prepay my loan or invest?&rdquo; — your answers, your numbers, calculated exactly.
-            </p>
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-              <Link
-                href="/app/chat"
-                className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-[14px] font-medium text-black shadow-[0_24px_48px_rgba(0,0,0,0.4)] transition hover:bg-white/90"
-              >
-                <MessageSquare className="size-4" />
-                ask Kuber
-                <ArrowRight className="size-4" />
-              </Link>
-              <button
-                onClick={() => saveAndUpdate(profile)}
-                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-6 py-3 text-[14px] text-white/80 transition hover:bg-white/[0.08] hover:text-white"
-              >
-                save my trajectory
-              </button>
-              <button
-                onClick={startOver}
-                className="inline-flex items-center gap-2 text-[13px] text-white/40 transition hover:text-white"
-              >
-                <RotateCcw className="size-3.5" />
-                start over
-              </button>
-            </div>
+          <h3 className="mt-4 text-[18px] font-semibold tracking-tight">
+            ask <span className="kuber-serif">Kuber</span> anything.
+          </h3>
+          <p className="mt-2 text-[13px] text-white/55 leading-relaxed">
+            &ldquo;when can I retire?&rdquo; · &ldquo;what if I take a sabbatical?&rdquo; · &ldquo;prepay loan or invest?&rdquo; — exact answers from your numbers.
+          </p>
+          <div className="mt-4 space-y-2">
+            <Link
+              href="/app/chat"
+              onClick={() => saveAndUpdate(profile)}
+              className="flex w-full min-h-[48px] items-center justify-center gap-2 rounded-2xl bg-white text-[14px] font-medium text-black active:scale-[0.99] transition-all"
+            >
+              <MessageSquare className="size-4" />
+              ask Kuber
+              <ArrowRight className="size-4" />
+            </Link>
+            <button
+              onClick={() => saveAndUpdate(profile)}
+              className="flex w-full min-h-[44px] items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-[13px] text-white/75 active:bg-white/[0.08] transition"
+            >
+              save my trajectory
+            </button>
           </div>
-        </AnimatedGroup>
+        </div>
+      </AnimatedGroup>
 
-        <p className="mt-12 text-center text-[11px] text-white/30">
-          assumes a {profile.annualReturnPct}% annual return, monthly compounding. real returns vary. Kuber is a coaching tool, not financial advice.
-        </p>
-      </div>
+      <button
+        onClick={startOver}
+        className="inline-flex w-full items-center justify-center gap-1.5 text-[12px] text-white/40 active:text-white transition py-3"
+      >
+        <RotateCcw className="size-3" />
+        start over
+      </button>
+
+      <p className="text-center text-[11px] text-white/30 leading-relaxed">
+        assumes {profile.annualReturnPct}% annual return, monthly compounding. Kuber is a coaching tool, not financial advice.
+      </p>
     </section>
   )
 }
 
 function Stat({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
-      <div className="text-[11px] uppercase tracking-wider text-white/40">{label}</div>
-      <div className="mt-2 text-3xl font-semibold tracking-tight tabular-nums">{value}</div>
-      <div className="mt-1 text-[12px] text-white/45">{sub}</div>
+    <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+      <div className="text-[10px] uppercase tracking-wider text-white/40">{label}</div>
+      <div className="mt-1.5 text-[22px] font-semibold tracking-tight tabular-nums leading-none">{value}</div>
+      <div className="mt-1.5 text-[11px] text-white/45 leading-snug">{sub}</div>
     </div>
   )
 }

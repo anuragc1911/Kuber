@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { AppSidebar } from '@/components/app/sidebar'
+import { BottomNav } from '@/components/app/bottom-nav'
 import { UserMenu } from '@/components/app/user-menu'
 import { KuberMark } from '@/components/ui/kuber-logo'
 
@@ -13,40 +13,29 @@ export function AppShell({
   userEmail: string | null
 }) {
   return (
-    <div className="relative h-screen flex flex-col bg-black overflow-hidden">
-      <header className="h-14 shrink-0 z-40 border-b border-white/10 bg-black flex items-stretch">
-        <Link
-          href="/"
-          aria-label="Kuber home"
-          className="w-14 shrink-0 flex items-center justify-center border-r border-white/10"
-        >
+    <div className="relative min-h-screen bg-black flex flex-col">
+      <header className="sticky top-0 z-40 h-14 shrink-0 border-b border-white/10 bg-black/85 backdrop-blur-xl flex items-center justify-between px-4 pt-[env(safe-area-inset-top)]">
+        <Link href="/" aria-label="Kuber home" className="inline-flex items-center gap-2">
           <KuberMark size="md" />
+          <span className="text-sm text-white/80 kuber-serif">Kuber</span>
         </Link>
-        <div className="flex-1 flex items-center justify-between px-4 gap-4">
-          <div className="text-sm text-white/60">
-            <span className="text-white/90">
-              <span className="kuber-serif">Kuber</span> — your wealth coach
+        <div className="flex items-center gap-2">
+          {userEmail && (
+            <span className="hidden xs:inline text-[11px] text-white/40 truncate max-w-[140px]">
+              {userEmail}
             </span>
-            {userEmail && (
-              <>
-                <span className="mx-2 text-white/30">·</span>
-                <span className="text-white/50">{userEmail}</span>
-              </>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="hidden sm:inline text-xs text-white/40">
-              {userEmail ? '' : 'demo mode · your numbers stay on this device'}
-            </span>
-            <UserMenu email={userEmail} businessName="" />
-          </div>
+          )}
+          <UserMenu email={userEmail} businessName="" />
         </div>
       </header>
 
-      <div className="flex flex-1 min-h-0">
-        <AppSidebar />
-        <main className="flex-1 min-w-0 overflow-y-auto">{children}</main>
-      </div>
+      <main className="flex-1 pb-[calc(96px+env(safe-area-inset-bottom))]">
+        <div className="mx-auto w-full max-w-md px-4 sm:max-w-lg sm:px-5">
+          {children}
+        </div>
+      </main>
+
+      <BottomNav />
     </div>
   )
 }

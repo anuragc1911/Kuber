@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Lock, Sparkles, Timer } from 'lucide-react'
+import { Lock, Sparkles, Timer, ArrowRight } from 'lucide-react'
 import { AnimatedGroup } from '@/components/ui/animated-group'
 
 const transitionVariants = {
@@ -11,7 +11,7 @@ const transitionVariants = {
       opacity: 1,
       filter: 'blur(0px)',
       y: 0,
-      transition: { type: 'spring', bounce: 0.3, duration: 1.5 },
+      transition: { type: 'spring', bounce: 0.3, duration: 1.2 },
     },
   },
 }
@@ -19,65 +19,72 @@ const transitionVariants = {
 const PROMISES = [
   { icon: Timer, label: 'two minutes', sub: 'four quick questions' },
   { icon: Lock, label: 'no account', sub: 'no signup wall to start' },
-  { icon: Sparkles, label: 'your real numbers', sub: 'your trajectory, not a generic chart' },
+  { icon: Sparkles, label: 'your numbers', sub: 'not a generic chart' },
 ]
 
 export default function StartPage() {
   return (
-    <section className="relative flex min-h-[calc(100vh-7rem)] items-center justify-center px-6 py-16">
-      <div className="mx-auto max-w-2xl text-center">
+    <section className="relative flex min-h-[calc(100vh-3.5rem)] flex-col justify-between py-10 pb-8">
+      <div className="pt-6">
         <AnimatedGroup variants={transitionVariants}>
-          <div className="mb-8 inline-flex items-center gap-2 rounded-[10px] border border-white/10 bg-black/80 px-4 py-2 text-sm font-medium tracking-wide text-foreground shadow-[0_8px_24px_rgba(0,0,0,0.4)] backdrop-blur-md">
-            <span className="size-1.5 rounded-full bg-[#B0C4DE] shadow-[0_0_8px_#B0C4DE]" />
-            your magic moment
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-white/55">
+            <span className="size-1 rounded-full bg-[#B0C4DE] shadow-[0_0_8px_#B0C4DE]" />
+            magic moment
           </div>
 
-          <h1 className="bg-gradient-to-b from-white to-white/70 bg-clip-text text-[clamp(2.5rem,6vw,4.25rem)] font-semibold leading-[1.05] tracking-[-0.04em] text-transparent">
-            see your future wealth in two minutes.
+          <h1 className="mt-6 bg-gradient-to-b from-white to-white/70 bg-clip-text text-[clamp(2rem,8vw,2.75rem)] font-semibold leading-[1.08] tracking-[-0.03em] text-transparent">
+            see your future wealth — in two minutes.
           </h1>
 
-          <p className="mx-auto mt-6 max-w-xl text-lg leading-[1.6] text-white/55">
+          <p className="mt-4 text-[15px] leading-[1.55] text-white/55">
             tell <span className="kuber-serif">Kuber</span> four things about your money. it&apos;ll show you where you&apos;re headed at this rate — and the single change that moves the line the most.
           </p>
         </AnimatedGroup>
 
         <AnimatedGroup
           variants={{
-            container: { visible: { transition: { staggerChildren: 0.1, delayChildren: 0.4 } } },
+            container: { visible: { transition: { staggerChildren: 0.08, delayChildren: 0.3 } } },
             ...transitionVariants,
           }}
         >
-          <div className="mt-10">
-            <Link
-              href="/start/setup"
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white px-7 py-3.5 text-[15px] font-medium text-black shadow-[0_24px_48px_rgba(0,0,0,0.4)] transition-all duration-200 hover:bg-white/90"
-            >
-              start
-              <span className="transition-transform duration-200">→</span>
-            </Link>
-          </div>
-
-          <div className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4 max-w-xl mx-auto">
+          <div className="mt-8 space-y-2.5">
             {PROMISES.map((p) => {
               const Icon = p.icon
               return (
                 <div
                   key={p.label}
-                  className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 text-left"
+                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4"
                 >
-                  <Icon className="size-4 text-[#B0C4DE]" />
-                  <div className="mt-3 text-sm text-white">{p.label}</div>
-                  <div className="text-[11px] text-white/40 mt-0.5">{p.sub}</div>
+                  <div className="size-9 rounded-xl flex items-center justify-center bg-[#B0C4DE]/10 border border-[#B0C4DE]/15">
+                    <Icon className="size-4 text-[#B0C4DE]" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm text-white">{p.label}</div>
+                    <div className="text-[12px] text-white/40">{p.sub}</div>
+                  </div>
                 </div>
               )
             })}
           </div>
-
-          <p className="mt-10 text-[11px] text-white/30">
-            we don&apos;t store anything until you say so. your inputs stay on your device.
-          </p>
         </AnimatedGroup>
       </div>
+
+      <AnimatedGroup variants={transitionVariants}>
+        <div className="mt-8 space-y-3">
+          <Link
+            href="/start/setup"
+            className="flex w-full min-h-[52px] items-center justify-center gap-2 rounded-2xl bg-white text-[15px] font-medium text-black shadow-[0_24px_48px_rgba(255,255,255,0.06)] active:scale-[0.99] transition-all"
+          >
+            start
+            <ArrowRight className="size-4" />
+          </Link>
+          <p className="text-center text-[11px] text-white/30 leading-relaxed">
+            inputs stay on your device until you save them.
+            <br />
+            Kuber is a coaching tool, not a registered financial advisor.
+          </p>
+        </div>
+      </AnimatedGroup>
     </section>
   )
 }
